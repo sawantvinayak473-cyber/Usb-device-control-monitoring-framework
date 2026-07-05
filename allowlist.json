@@ -1,0 +1,11 @@
+{
+  "VID_EXAMPLE&PID_EXAMPLE&SER_EXAMPLE": {
+    "description": "Example Corporate USB Drive (REPLACE ME)",
+    "vendor_id": "EXAMPLE",
+    "product_id": "EXAMPLE",
+    "serial": "EXAMPLE",
+    "owner": "IT Department",
+    "added_at": "2026-07-05T16:45:44.805607",
+    "note": "Delete this entry and add your own real devices"
+  }
+}

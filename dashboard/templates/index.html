@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USB Security Command Center v2.0</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #080F1A;
+  --bg-card:   #0F1E2E;
+  --bg-card2:  #111D2C;
+  --border:    #1A3050;
+  --blue:      #1E8BC3;
+  --teal:      #0FB8A0;
+  --red:       #E0412A;
+  --amber:     #E8A020;
+  --purple:    #8E44AD;
+  --white:     #F0F6FC;
+  --muted:     #7A99B8;
+  --grid:      rgba(26,48,80,0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--white); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+/* ── Navbar ─────────────────────────────────────────────────────── */
+.nav-bar {
+  background: #060D18;
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.4rem;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; font-size: 1.05rem; font-weight: 700; }
+.shield { color: var(--teal); font-size: 1.3rem; }
+.live-dot { display: inline-block; width: 8px; height: 8px; background: var(--teal);
+            border-radius: 50%; margin-right: 5px; animation: blink 1.6s ease infinite; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+.live-label { font-size: .72rem; color: var(--teal); font-weight: 600; letter-spacing: .06em; }
+.nav-right { display: flex; align-items: center; gap: 14px; }
+.clock { font-family: 'Courier New', monospace; font-size: .88rem; color: var(--muted); }
+.btn-report {
+  background: var(--blue); color: #fff; border: none;
+  padding: 5px 14px; border-radius: 6px; font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.btn-report:hover { background: #1678a8; }
+
+/* ── Main layout ────────────────────────────────────────────────── */
+.main { padding: 1.1rem 1.4rem 1.4rem; }
+
+/* ── KPI cards ──────────────────────────────────────────────────── */
+.kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: .85rem; margin-bottom: .85rem; }
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.kpi-card:hover { border-color: var(--blue); }
+.kpi-card::before { content:''; position:absolute; left:0; top:0; width:4px; height:100%; }
+.kpi-card.c-blue::before   { background: var(--blue); }
+.kpi-card.c-teal::before   { background: var(--teal); }
+.kpi-card.c-red::before    { background: var(--red);  }
+.kpi-card.c-amber::before  { background: var(--amber); }
+.kpi-num  { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+.kpi-label{ font-size: .76rem; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: .05em; }
+.kpi-icon { position:absolute; right:12px; top:12px; font-size:1.8rem; opacity:.13; }
+.c-blue  .kpi-num { color: var(--blue); }
+.c-teal  .kpi-num { color: var(--teal); }
+.c-red   .kpi-num { color: var(--red);  }
+.c-amber .kpi-num { color: var(--amber); }
+
+/* ── Chart row ──────────────────────────────────────────────────── */
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: .85rem; margin-bottom: .85rem; }
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  height: 290px;
+}
+.card-title {
+  font-size: .72rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: .85rem;
+}
+
+/* ── Bottom row ─────────────────────────────────────────────────── */
+.bottom-row { display: grid; grid-template-columns: 3fr 2fr; gap: .85rem; }
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+.sec-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.sec-table th {
+  color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left;
+}
+.sec-table td { padding: 7px 10px; border-bottom: 1px solid rgba(26,48,80,.5); vertical-align: middle; }
+.sec-table tbody tr:hover { background: rgba(30,139,195,.06); }
+.mono { font-family: 'Courier New', monospace; font-size: .78rem; }
+
+/* ── Badges ─────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+}
+.b-allowed    { background: rgba(15,184,160,.15); color: var(--teal);   border: 1px solid rgba(15,184,160,.35); }
+.b-blocked    { background: rgba(224,65,42,.15);  color: var(--red);    border: 1px solid rgba(224,65,42,.35);  }
+.b-suspicious { background: rgba(232,160,32,.15); color: var(--amber);  border: 1px solid rgba(232,160,32,.35); }
+.b-unknown    { background: rgba(142,68,173,.15); color: var(--purple); border: 1px solid rgba(142,68,173,.35); }
+.b-info       { background: rgba(30,139,195,.15); color: var(--blue);   border: 1px solid rgba(30,139,195,.35); }
+.b-warning    { background: rgba(232,160,32,.15); color: var(--amber);  border: 1px solid rgba(232,160,32,.35); }
+.b-alert,.b-critical { background: rgba(224,65,42,.15); color: var(--red); border: 1px solid rgba(224,65,42,.35); }
+
+/* ── Threat bar ─────────────────────────────────────────────────── */
+.t-bar-wrap { display: flex; align-items: center; gap: 7px; }
+.t-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.t-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+.t-low      { background: var(--teal);  }
+.t-medium   { background: var(--amber); }
+.t-high     { background: #E07020;      }
+.t-critical { background: var(--red);   }
+.t-score { font-size: .74rem; min-width: 28px; color: var(--muted); }
+
+/* ── Event feed ─────────────────────────────────────────────────── */
+.feed { max-height: 296px; overflow-y: auto; }
+.feed::-webkit-scrollbar { width: 3px; }
+.feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.feed-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid rgba(26,48,80,.5);
+  animation: fadeIn .3s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:none; } }
+.feed-time { font-family:'Courier New',monospace; font-size:.7rem; color:var(--muted); white-space:nowrap; padding-top:2px; }
+.feed-body { flex:1; }
+.feed-type { font-size:.76rem; font-weight:600; color:var(--white); }
+.feed-detail { font-size:.7rem; color:var(--muted); margin-top:1px; }
+
+/* ── Status bar ─────────────────────────────────────────────────── */
+.status-bar {
+  background: #060D18; border-top: 1px solid var(--border);
+  padding: 5px 1.4rem; font-size: .72rem; color: var(--muted);
+  display: flex; justify-content: space-between;
+  position: sticky; bottom: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="nav-bar">
+  <div class="nav-brand">
+    <span class="shield">🛡</span>
+    USB Security Command Center
+    <span style="margin-left:8px">
+      <span class="live-dot"></span>
+      <span class="live-label">LIVE</span>
+    </span>
+  </div>
+  <div class="nav-right">
+    <span class="clock" id="clock">--:--:--</span>
+    <button class="btn-report" onclick="downloadReport()">⬇ PDF Report</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card c-blue">
+      <div class="kpi-num" id="k-events">--</div>
+      <div class="kpi-label">Total Events</div>
+      <div class="kpi-icon">📊</div>
+    </div>
+    <div class="kpi-card c-teal">
+      <div class="kpi-num" id="k-allowed">--</div>
+      <div class="kpi-label">Authorized Devices</div>
+      <div class="kpi-icon">✅</div>
+    </div>
+    <div class="kpi-card c-red">
+      <div class="kpi-num" id="k-blocked">--</div>
+      <div class="kpi-label">Blocked Devices</div>
+      <div class="kpi-icon">🚫</div>
+    </div>
+    <div class="kpi-card c-amber">
+      <div class="kpi-num" id="k-critical">--</div>
+      <div class="kpi-label">Critical Threats</div>
+      <div class="kpi-icon">⚠️</div>
+    </div>
+  </div>
+
+  <!-- CHART ROW -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="card-title">USB Activity — Last 24 Hours</div>
+      <canvas id="lineChart" style="max-height:220px"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="card-title">Device Status Breakdown</div>
+      <canvas id="pieChart" style="max-height:220px"></canvas>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+
+    <!-- Devices table -->
+    <div class="table-card">
+      <div class="card-title" style="display:flex;justify-content:space-between">
+        <span>Device Registry</span>
+        <span id="device-count" style="color:var(--blue);font-size:.7rem">Loading…</span>
+      </div>
+      <table class="sec-table">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>VID / PID</th>
+            <th>Status</th>
+            <th style="min-width:130px">Threat Score</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody id="device-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Event feed -->
+    <div class="table-card">
+      <div class="card-title" style="display:flex;justify-content:space-between">
+        <span>Live Event Feed</span>
+        <span id="event-count" style="color:var(--muted);font-size:.7rem">--</span>
+      </div>
+      <div class="feed" id="feed">
+        <div style="text-align:center;color:var(--muted);padding:2rem;font-size:.85rem">Waiting for events…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span>USB Device Control & Monitoring Framework v2.0 — Enterprise Blue Team Edition</span>
+  <span id="last-refresh">Refreshing every 5 s</span>
+</div>
+
+
+<script>
+// ── Chart.js setup ──────────────────────────────────────────────────────
+
+Chart.defaults.color          = '#7A99B8';
+Chart.defaults.borderColor    = 'rgba(26,48,80,0.6)';
+Chart.defaults.font.family    = "'Segoe UI', system-ui, sans-serif";
+
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+const lineChart = new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: 'Events',
+        data: [],
+        borderColor: '#1E8BC3',
+        backgroundColor: 'rgba(30,139,195,0.08)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.45,
+        pointRadius: 2.5,
+        pointBackgroundColor: '#1E8BC3'
+      },
+      {
+        label: 'Violations',
+        data: [],
+        borderColor: '#E0412A',
+        backgroundColor: 'rgba(224,65,42,0.08)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.45,
+        pointRadius: 2.5,
+        pointBackgroundColor: '#E0412A'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { font: { size: 10 }, boxWidth: 12, padding: 10 } }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(26,48,80,0.5)' },
+        ticks: { font: { size: 9 }, maxRotation: 0, maxTicksLimit: 8 }
+      },
+      y: {
+        grid: { color: 'rgba(26,48,80,0.5)' },
+        ticks: { font: { size: 9 } },
+        beginAtZero: true
+      }
+    }
+  }
+});
+
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+const pieChart = new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Authorized', 'Blocked', 'Suspicious', 'Unknown'],
+    datasets: [{
+      data: [0, 0, 0, 0],
+      backgroundColor: ['#0FB8A0','#E0412A','#E8A020','#8E44AD'],
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: { size: 10 }, boxWidth: 10, padding: 8 }
+      }
+    }
+  }
+});
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+function badge(status) {
+  const map = {
+    ALLOWED:    'b-allowed',    BLOCKED:    'b-blocked',
+    SUSPICIOUS: 'b-suspicious', UNKNOWN:    'b-unknown',
+    INFO:       'b-info',       WARNING:    'b-warning',
+    ALERT:      'b-alert',      CRITICAL:   'b-critical',
+  };
+  const cls = map[status] || 'b-info';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+function threatBar(score) {
+  score = score || 0;
+  const cls  = score < 30 ? 't-low' : score < 60 ? 't-medium' : score < 80 ? 't-high' : 't-critical';
+  const lbl  = score < 30 ? 'LOW'   : score < 60 ? 'MED'     : score < 80 ? 'HIGH'   : 'CRIT';
+  const col  = score < 30 ? '#0FB8A0' : score < 60 ? '#E8A020' : score < 80 ? '#E07020' : '#E0412A';
+  return `<div class="t-bar-wrap">
+    <div class="t-bar"><div class="t-fill ${cls}" style="width:${score}%"></div></div>
+    <span class="t-score" style="color:${col}">${score}<span style="font-size:.6rem;margin-left:2px">${lbl}</span></span>
+  </div>`;
+}
+
+// ── Clock ────────────────────────────────────────────────────────────────
+function tick() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-IN', { hour12: false });
+}
+setInterval(tick, 1000); tick();
+
+// ── API fetch functions ──────────────────────────────────────────────────
+
+async function fetchStats() {
+  const d = await fetch('/api/stats').then(r => r.json()).catch(() => ({}));
+  document.getElementById('k-events').textContent  = d.total_events   ?? '--';
+  document.getElementById('k-allowed').textContent = d.allowed_devices ?? '--';
+  document.getElementById('k-blocked').textContent = d.blocked_devices ?? '--';
+  document.getElementById('k-critical').textContent= d.critical_threats ?? '--';
+  pieChart.data.datasets[0].data = [
+    d.allowed_devices ?? 0, d.blocked_devices ?? 0,
+    d.suspicious_devices ?? 0, d.unknown_devices ?? 0
+  ];
+  pieChart.update('none');
+}
+
+async function fetchDevices() {
+  const devices = await fetch('/api/devices').then(r => r.json()).catch(() => []);
+  document.getElementById('device-count').textContent = `${devices.length} devices`;
+  const tbody = document.getElementById('device-tbody');
+  if (!devices.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">No devices detected. Run demo_seeder.py to load demo data.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = devices.map(d => `
+    <tr>
+      <td>
+        <div style="font-weight:600;font-size:.82rem">${d.description || 'Unknown'}</div>
+        <div class="mono" style="color:var(--muted);font-size:.68rem">${(d.serial||'').substring(0,20) || 'No serial'}</div>
+      </td>
+      <td>
+        <span class="mono" style="color:var(--blue)">VID_${d.vendor_id||'?'}</span><br>
+        <span class="mono" style="color:var(--muted)">PID_${d.product_id||'?'}</span>
+      </td>
+      <td>${badge(d.status||'UNKNOWN')}</td>
+      <td>${threatBar(d.threat_score)}</td>
+      <td style="font-size:.72rem;color:var(--muted)">${(d.last_seen||'').substring(11,19)||'--'}</td>
+    </tr>
+  `).join('');
+}
+
+async function fetchEvents() {
+  const events = await fetch('/api/events').then(r => r.json()).catch(() => []);
+  document.getElementById('event-count').textContent = `${events.length} recent`;
+  const feed = document.getElementById('feed');
+  if (!events.length) {
+    feed.innerHTML = `<div style="text-align:center;color:var(--muted);padding:2rem;font-size:.85rem">No events yet</div>`;
+    return;
+  }
+  feed.innerHTML = events.slice(0, 30).map(ev => {
+    const time = (ev.timestamp || '').substring(11, 19) || '--:--:--';
+    const sev  = ev.severity || 'INFO';
+    return `<div class="feed-item">
+      <span class="feed-time">${time}</span>
+      ${badge(sev)}
+      <div class="feed-body">
+        <div class="feed-type">${ev.event_type || ''}</div>
+        <div class="feed-detail">${ev.details || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function fetchTimeline() {
+  const d = await fetch('/api/timeline').then(r => r.json()).catch(() => ({}));
+  lineChart.data.labels              = d.labels     || [];
+  lineChart.data.datasets[0].data   = d.events      || [];
+  lineChart.data.datasets[1].data   = d.violations  || [];
+  lineChart.update('none');
+}
+
+async function downloadReport() {
+  const btn = document.querySelector('.btn-report');
+  btn.textContent = '⏳ Generating…'; btn.disabled = true;
+  try {
+    const resp = await fetch('/api/report');
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = 'usb_audit_report.pdf'; a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      alert('Report generation failed. Check the console.');
+    }
+  } catch(e) {
+    alert('Error: ' + e);
+  }
+  btn.textContent = '⬇ PDF Report'; btn.disabled = false;
+}
+
+// ── Refresh loop ─────────────────────────────────────────────────────────
+
+async function refreshAll() {
+  await Promise.all([fetchStats(), fetchDevices(), fetchEvents(), fetchTimeline()]);
+  document.getElementById('last-refresh').textContent =
+    'Last refresh: ' + new Date().toLocaleTimeString('en-IN', { hour12: false });
+}
+
+refreshAll();
+setInterval(refreshAll, 5000);
+</script>
+</body>
+</html>
