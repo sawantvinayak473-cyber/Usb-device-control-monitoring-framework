@@ -1,3 +1,0 @@
-2026-07-05 16:45:58  [WARNING ]  UNKNOWN DEVICE |  USB  SanDisk 3.2Gen1 USB Device | VID:0000 PID:0000 Serial:04014158a56b0f516bc6 | Action: BLOCKED (not in allowlist)
-2026-07-05 16:45:58  [WARNING ]  UNAUTHORIZED USB | VID_0000&PID_0000&SER_04014158a56b0f516bc6 | Drive:None | At:2026-07-05 16:45:58
-2026-07-05 16:45:58  [WARNING ]  Blocking attempted without admin rights — degraded mode
