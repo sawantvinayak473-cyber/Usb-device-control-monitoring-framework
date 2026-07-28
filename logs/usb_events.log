@@ -1,0 +1,35 @@
+2026-07-25 00:29:18  [INFO    ]  Monitoring session started
+2026-07-25 00:30:25  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-25 00:30:25  [INFO    ]  USB CONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 | Serial:04014158A56B0F516BC6 | Drive:D: | Time:2026-07-25 00:30:25
+2026-07-25 00:30:58  [INFO    ]  USB Monitor stopped.
+2026-07-25 00:31:58  [INFO    ]  Added to allowlist: VID_0781&PID_5581&SER_04014158A56B0F516BC6 | Owner: Vinayak Sawant
+2026-07-25 00:32:38  [INFO    ]  Monitoring session started
+2026-07-25 00:33:31  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-25 00:33:31  [INFO    ]  USB CONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 | Serial:04014158A56B0F516BC6 | Drive:D: | Time:2026-07-25 00:33:31
+2026-07-25 00:33:31  [INFO    ]  ALLOWLIST HIT |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 Owner: Vinayak Sawant
+2026-07-25 00:34:34  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-25 00:35:33  [INFO    ]  USB DISCONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID_0781&PID_5581&SER_04014158A56B0F516BC6 | Time:2026-07-25 00:35:33
+2026-07-27 08:08:34  [INFO    ]  Monitoring session started
+2026-07-27 08:13:41  [INFO    ]  Monitoring session started
+2026-07-27 08:14:09  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-27 08:14:09  [INFO    ]  USB CONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 | Serial:04014158A56B0F516BC6 | Drive:D: | Time:2026-07-27 08:14:09
+2026-07-27 08:14:09  [INFO    ]  ALLOWLIST HIT |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 Owner: Vinayak Sawant
+2026-07-27 08:14:29  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-27 09:50:40  [INFO    ]  USB DISCONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID_0781&PID_5581&SER_04014158A56B0F516BC6 | Time:2026-07-27 09:50:40
+2026-07-27 09:51:36  [INFO    ]  USB Monitor stopped.
+2026-07-28 08:22:39  [INFO    ]  Monitoring session started
+2026-07-28 08:23:42  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-28 08:23:42  [INFO    ]  USB CONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 | Serial:04014158A56B0F516BC6 | Drive:D: | Time:2026-07-28 08:23:42
+2026-07-28 08:23:42  [INFO    ]  ALLOWLIST HIT |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 Owner: Vinayak Sawant
+2026-07-28 08:24:14  [INFO    ]  USB Monitor stopped.
+2026-07-28 08:30:58  [INFO    ]  Monitoring session started
+2026-07-28 08:32:03  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-28 08:32:03  [INFO    ]  USB CONNECTED |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 | Serial:04014158A56B0F516BC6 | Drive:D: | Time:2026-07-28 08:32:03
+2026-07-28 08:32:03  [INFO    ]  ALLOWLIST HIT |  USB  SanDisk 3.2Gen1 USB Device | VID:0781 PID:5581 Owner: Vinayak Sawant
+2026-07-28 08:33:54  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> D:
+2026-07-28 08:36:15  [INFO    ]  Monitoring session started
+2026-07-28 08:37:05  [WARNING ]  Could not resolve VID/PID for: USBSTOR\DISK&VEN_GENERAL&PROD_UDISK&REV_5.00\6&C9DE711&0&_&0
+2026-07-28 08:37:06  [DEBUG   ]  [drive-letter WMI] disk 1 -> partition Disk #1, Partition #0 -> E:
+2026-07-28 08:37:06  [INFO    ]  USB CONNECTED | General UDisk USB Device | VID:0000 PID:0000 | Serial: | Drive:E: | Time:2026-07-28 08:37:06
+2026-07-28 08:45:49  [INFO    ]  USB DISCONNECTED | General UDisk USB Device | VID_0000&PID_0000&SER_ | Time:2026-07-28 08:45:49
+2026-07-28 09:07:44  [INFO    ]  USB Monitor stopped.
