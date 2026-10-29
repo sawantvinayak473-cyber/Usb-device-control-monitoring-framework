@@ -1,0 +1,25 @@
+
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*.swp
+*.swo
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Runtime data and logs
+logs/
+reports/
+*.db
+*.log
+
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# Generated documentation previews
+rendered_pages/
