@@ -11,6 +11,22 @@
 
 import os
 
+
+def _env_int(name: str, default: int) -> int:
+    """Read an integer environment setting without making startup fragile."""
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read a floating-point environment setting without making startup fragile."""
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
 # ---------------------------------------------------------------------------
 # PATHS — where logs, reports, and the allowlist/blocklist are stored
 # ---------------------------------------------------------------------------
@@ -20,6 +36,7 @@ LOG_DIR         = os.path.join(BASE_DIR, "logs")
 REPORT_DIR      = os.path.join(BASE_DIR, "reports")
 ALLOWLIST_FILE  = os.path.join(BASE_DIR, "allowlist.json")
 BLOCKLIST_FILE  = os.path.join(BASE_DIR, "blocklist.json")
+YARA_RULES_FILE = os.path.join(BASE_DIR, "yara_rules", "usb_threats.yar")
 AUDIT_LOG_FILE  = os.path.join(LOG_DIR,  "usb_audit.log")
 EVENT_LOG_FILE  = os.path.join(LOG_DIR,  "usb_events.log")
 
@@ -36,6 +53,27 @@ MAX_HASH_SIZE_MB = 100
 
 # If a single file transfer copies more than this many files, raise alert
 LARGE_TRANSFER_THRESHOLD = 20
+
+# Optional YARA scanning for files created or modified on monitored USB
+# volumes. The framework remains operational when yara-python is not installed.
+YARA_ENABLED = os.getenv("USB_YARA_ENABLED", "true").strip().lower() not in {
+    "0", "false", "no", "off"
+}
+YARA_MAX_FILE_SIZE_MB = _env_int("USB_YARA_MAX_FILE_SIZE_MB", 50)
+
+# Real-time file events often arrive before a copy operation has finished.
+# The file auditor coalesces those events and samples size/mtime until the
+# file remains unchanged for this interval before passing it to YARA.  The
+# worker is separate from watchdog, so these waits never block USB event
+# handling.
+YARA_DEBOUNCE_SECONDS = max(0.0, _env_float("USB_YARA_DEBOUNCE_SECONDS", 0.75))
+YARA_STABILITY_SECONDS = max(0.0, _env_float("USB_YARA_STABILITY_SECONDS", 0.75))
+YARA_STABILITY_TIMEOUT_SECONDS = max(
+    YARA_STABILITY_SECONDS,
+    _env_float("USB_YARA_STABILITY_TIMEOUT_SECONDS", 30.0),
+)
+YARA_RETRY_SECONDS = max(0.1, _env_float("USB_YARA_RETRY_SECONDS", 1.0))
+YARA_MAX_RETRIES = max(0, _env_int("USB_YARA_MAX_RETRIES", 2))
 
 # ---------------------------------------------------------------------------
 # BLOCKING SETTINGS
@@ -87,18 +125,38 @@ DASHBOARD_DEBUG = True
 #  v2.0 SETTINGS  (added to complete integration)
 # ==========================================================================
 
-# ── Alert / Email system ───────────────────────────────────────────────────
-# True  → alerts printed to terminal (no email needed — good for demos)
-# False → alerts sent via SMTP (fill credentials below)
-ALERT_DEMO_MODE = True
 
-SMTP_HOST     = "smtp.gmail.com"
-SMTP_PORT     = 587
-SMTP_USE_TLS  = True
-SMTP_USER     = ""        # e.g. "security@yourcompany.com"
-SMTP_PASS     = ""        # Gmail app password (not your main password)
-SMTP_FROM     = "usb-security@yourcompany.com"
-SMTP_TO       = "it-security@yourcompany.com"
+# Alert / Email system
+ALERT_DEMO_MODE = os.getenv(
+    "USB_ALERT_DEMO_MODE", "true"
+).strip().lower() in {"1", "true", "yes", "on"}
+
+SMTP_HOST = os.getenv("USB_SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = _env_int("USB_SMTP_PORT", 587)
+SMTP_USE_TLS = True
+
+SMTP_USER = os.getenv("USB_SMTP_USER", "")
+SMTP_PASS = os.getenv("USB_SMTP_PASS", "")
+SMTP_FROM = os.getenv("USB_SMTP_FROM", SMTP_USER)
+SMTP_TO = os.getenv("USB_SMTP_TO", "")
+
+# Queue-level protection in addition to source-specific de-duplication.  It
+# prevents a transient duplicate USB / filesystem event from becoming a burst
+# of identical email while allowing a genuinely changed file to raise a new
+# detection.
+ALERT_DEDUP_SECONDS = max(0, _env_int("USB_ALERT_DEDUP_SECONDS", 300))
+
+# ── Optional Slack / Telegram webhooks ────────────────────────────────────
+# Keep credentials out of source control by supplying them as environment
+# variables.  Each configured channel is independent of the other.
+WEBHOOK_ENABLED = os.getenv("USB_WEBHOOK_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+SLACK_WEBHOOK_URL  = os.getenv("USB_SLACK_WEBHOOK_URL", "")
+TELEGRAM_BOT_TOKEN = os.getenv("USB_TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID   = os.getenv("USB_TELEGRAM_CHAT_ID", "")
+WEBHOOK_TIMEOUT_SECONDS = _env_float("USB_WEBHOOK_TIMEOUT_SECONDS", 8.0)
+WEBHOOK_DEDUP_SECONDS   = _env_int("USB_WEBHOOK_DEDUP_SECONDS", 60)
 
 # ── Threat scoring thresholds ──────────────────────────────────────────────
 THREAT_LOW_MAX    = 29   # 0–29   = LOW

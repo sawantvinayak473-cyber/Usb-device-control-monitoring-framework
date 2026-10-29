@@ -12,6 +12,7 @@
 
 import json
 import os
+import re
 from typing import Optional
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
@@ -31,6 +32,7 @@ class USBDevice:
     instance_id:  str            # USBSTOR path — used by Disable-PnpDevice
     connected_at: str
     disk_id:      str = ""       # Win32_DiskDrive.DeviceID — used for drive-letter polling
+    hid_storage_combo: Optional[bool] = None  # set after a topology-based PnP check
 
     @property
     def fingerprint(self) -> str:
@@ -137,6 +139,87 @@ class DeviceManager:
         if len(set(s.upper())) == 1:  return True   # all same char
         if len(s) < 8:                return True
         return False
+
+    def is_hid_storage_combo(self, instance_id: str, vendor_id: str = "",
+                             product_id: str = "", wmi_client=None) -> bool:
+        """Return whether storage and HID interfaces share a verified PnP link.
+
+        A VID/PID match by itself is deliberately insufficient: legitimate
+        composite devices can publish multiple interfaces with the same IDs.
+        A positive result requires a matching ContainerId, parent identifier,
+        location, or stable instance token as exposed by Windows.
+
+        ``wmi_client`` is an optional injection point for tests; production
+        callers leave it unset and the method opens a short-lived WMI client.
+        """
+        if not instance_id:
+            return False
+
+        instance_upper = instance_id.upper()
+        vid_match = re.search(r"VID_([0-9A-F]{4})", instance_upper)
+        pid_match = re.search(r"PID_([0-9A-F]{4})", instance_upper)
+        vid = (vid_match.group(1) if vid_match else self._normalize_field(vendor_id))
+        pid = (pid_match.group(1) if pid_match else self._normalize_field(product_id))
+        if not (re.fullmatch(r"[0-9A-F]{4}", vid or "") and
+                re.fullmatch(r"[0-9A-F]{4}", pid or "")):
+            event_logger.debug("HID combo check skipped: VID/PID could not be resolved")
+            return False
+
+        try:
+            if wmi_client is None:
+                import wmi
+                wmi_client = wmi.WMI()
+            entities = list(wmi_client.Win32_PnPEntity())
+        except Exception as exc:
+            event_logger.debug(f"HID combo check failed while querying PnP: {exc}")
+            return False
+
+        storage = next(
+            (entity for entity in entities
+             if (getattr(entity, "DeviceID", "") or "").upper() == instance_upper),
+            None,
+        )
+        storage_values = self._pnp_relationship_values(storage, instance_upper)
+        hid_guid = "{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}"
+        vid_pid = f"VID_{vid}&PID_{pid}"
+
+        for entity in entities:
+            device_id = (getattr(entity, "DeviceID", "") or "").upper()
+            class_guid = (getattr(entity, "ClassGuid", "") or "").upper()
+            pnp_class = (getattr(entity, "PNPClass", "") or "").upper()
+            if not (class_guid == hid_guid or pnp_class == "HIDCLASS"):
+                continue
+            if vid_pid not in device_id:
+                continue
+
+            hid_values = self._pnp_relationship_values(entity, device_id)
+            if storage_values.intersection(hid_values):
+                event_logger.warning(
+                    "HID+STORAGE COMBO DETECTED | Storage instance: %s | HID sibling: %s",
+                    instance_id, getattr(entity, "DeviceID", ""),
+                )
+                return True
+
+        return False
+
+    @staticmethod
+    def _pnp_relationship_values(entity, fallback_id: str) -> set:
+        """Extract high-confidence relationship identifiers from a PnP entity."""
+        values = set()
+        if entity is not None:
+            for name in ("ContainerId", "ContainerID", "ParentDeviceID",
+                         "Parent", "LocationInformation", "LocationPaths"):
+                value = getattr(entity, name, None)
+                if value:
+                    values.add(str(value).strip().upper())
+
+        # A matching final instance token is a useful fallback only when it is
+        # specific enough to identify a physical device, not merely "0".
+        tail = (fallback_id or "").rsplit("\\", 1)[-1].strip().upper()
+        tail = re.sub(r"&0$", "", tail)
+        if len(tail) >= 8 and not tail.isdigit():
+            values.add(f"INSTANCE:{tail}")
+        return values
 
     # ------------------------------------------------------------------
     # Normalization

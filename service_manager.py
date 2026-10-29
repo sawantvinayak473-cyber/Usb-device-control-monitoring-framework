@@ -81,7 +81,7 @@ if PYWIN32_AVAILABLE:
             win32event.SetEvent(self._stop_event)
             if self._monitor:
                 self._monitor.stop()
-            if self._alert_system:
+            elif self._alert_system:
                 self._alert_system.stop()
             servicemanager.LogMsg(
                 servicemanager.EVENTLOG_INFORMATION_TYPE,
@@ -100,8 +100,10 @@ if PYWIN32_AVAILABLE:
             self._alert_system.start()
             self._alert_system.send_service_started_alert()
 
-            # Start USB monitor in a background thread
-            self._monitor = USBMonitor()
+            # Reuse the service queue inside USBMonitor.  That keeps startup,
+            # device, file, and shutdown alerts on one worker rather than
+            # accidentally running two independent SMTP workers.
+            self._monitor = USBMonitor(alert_system=self._alert_system)
             t = threading.Thread(target=self._monitor.start,
                                  name="USBMonitor", daemon=True)
             t.start()
@@ -152,17 +154,13 @@ def _status():
 def _debug_run():
     """Run the framework in foreground (no service install needed)."""
     print(f"\n  Running in DEBUG mode (Ctrl+C to stop)\n")
-    from alert_system import AlertSystem
     from usb_monitor  import USBMonitor
 
-    alerts  = AlertSystem()
-    alerts.start()
     monitor = USBMonitor()
     try:
         monitor.start()
     except KeyboardInterrupt:
         monitor.stop()
-        alerts.stop()
 
 
 # ══════════════════════════════════════════════════════════════════════════

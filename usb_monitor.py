@@ -46,6 +46,7 @@ from file_auditor import FileAuditor
 from database import get_db
 from threat_engine import ThreatScorer
 from alert_system import AlertSystem
+from webhook_notifier import get_notifier
 
 try:
     import wmi
@@ -58,12 +59,16 @@ except ImportError:
 
 class USBMonitor:
 
-    def __init__(self):
+    def __init__(self, alert_system: Optional[AlertSystem] = None, notifier=None):
         self.device_manager = DeviceManager()
-        self.file_auditor   = FileAuditor()
         self.db             = get_db()
         self.scorer         = ThreatScorer()
-        self.alert_system   = AlertSystem()
+        # The file auditor receives this exact queue instance so a YARA
+        # detection follows the same safe SMTP path as USB policy events.
+        self.alert_system   = alert_system or AlertSystem()
+        self.notifier       = notifier or get_notifier()
+        self.file_auditor   = FileAuditor(
+            alert_system=self.alert_system, notifier=self.notifier)
         self._running       = False
         self._threads: List[threading.Thread] = []
         self._connected: dict = {}   # {fingerprint: USBDevice}
@@ -74,6 +79,7 @@ class USBMonitor:
 
     def start(self):
         self.alert_system.start()
+        self.notifier.send_service_started()
         if not WMI_AVAILABLE:
             print_warn("WMI not available — running in SIMULATION mode.")
             print_warn("Install pywin32:  pip install pywin32")
@@ -101,6 +107,7 @@ class USBMonitor:
         self._running = False
         self.file_auditor.stop_all()
         self.alert_system.stop()
+        self.notifier.stop()
         event_logger.info("USB Monitor stopped.")
 
     # ------------------------------------------------------------------
@@ -170,9 +177,38 @@ class USBMonitor:
                 self.db.log_event("SPOOFING_ALERT", device.fingerprint,
                                   device.drive_letter, spoof_msg, "ALERT")
                 self.alert_system.send_spoofing_alert(device)
+                self.notifier.send_spoofing(device)
+
+            # BadUSB detection needs both a HID interface and a verified PnP
+            # relationship to this storage device; a VID/PID match alone is
+            # not considered sufficient evidence.
+            device.hid_storage_combo = self.device_manager.is_hid_storage_combo(
+                device.instance_id, device.vendor_id, device.product_id)
 
             # Threat scoring
             threat_score = self.scorer.score_device(device)
+
+            if device.hid_storage_combo:
+                badusb_msg = (
+                    f"BADUSB ALERT | Linked HID (keyboard) + USB Storage interfaces | "
+                    f"{device.description} | VID:{device.vendor_id} "
+                    f"PID:{device.product_id} | Serial:{device.serial}"
+                )
+                print_alert(badusb_msg)
+                audit_logger.warning(badusb_msg)
+                self.db.log_event("BADUSB_HID_COMBO", device.fingerprint,
+                                  device.drive_letter, badusb_msg, "CRITICAL")
+                self.db.log_device(device, "BLOCKED", threat_score.score,
+                                   threat_score.level)
+                self.db.log_violation(
+                    "BADUSB_HID_COMBO", device, "CRITICAL",
+                    "Auto-blocked after verified HID + storage topology match",
+                    badusb_msg,
+                )
+                self.alert_system.send_badusb_alert(device)
+                self.notifier.send_badusb(device)
+                block_device(device)
+                continue
 
             # Authorization
             authorized = self.device_manager.is_authorized(device)
@@ -192,6 +228,8 @@ class USBMonitor:
                     f"Score:{threat_score.score} [{threat_score.level}] | "
                     f"At:{timestamp}")
                 self.alert_system.send_violation_alert(
+                    device, "UNAUTHORIZED_ACCESS", threat_score)
+                self.notifier.send_violation(
                     device, "UNAUTHORIZED_ACCESS", threat_score)
                 block_device(device)
                 continue

@@ -82,6 +82,7 @@ class ThreatScorer:
       BLOCKLIST_HIT         → 100  Always critical; skip other checks
       UNKNOWN_DEVICE        →  40  Not in allowlist (default-deny)
       SPOOFED_SERIAL        →  35  BadUSB / cloned hardware indicator
+      BADUSB_HID_COMBO       → 100  Verified storage + HID topology match
       PREVIOUS_VIOLATIONS   →  15  Per recorded violation (max cap 30)
       RAPID_RECONNECTIONS   →  20  >3 plug-ins in last hour
       OFF_HOURS_CONNECTION  →  10  Connected between 22:00 and 06:00
@@ -92,6 +93,7 @@ class ThreatScorer:
         "BLOCKLIST_HIT":         100,
         "UNKNOWN_DEVICE":         40,
         "SPOOFED_SERIAL":         35,
+        "BADUSB_HID_COMBO":      100,
         "PREVIOUS_VIOLATIONS":    15,   # multiplied by count, capped at 30
         "RAPID_RECONNECTIONS":    20,
         "OFF_HOURS_CONNECTION":   10,
@@ -131,6 +133,26 @@ class ThreatScorer:
                 "Immediately remove the device from the endpoint",
                 "File an IT security incident report",
                 "Interview the user who connected this device",
+            ])
+
+        # ── 1b. Verified BadUSB HID/storage combination ──────────────
+        hid_combo = getattr(device, "hid_storage_combo", None)
+        if hid_combo is None:
+            hid_combo = dm.is_hid_storage_combo(
+                getattr(device, "instance_id", ""),
+                getattr(device, "vendor_id", ""),
+                getattr(device, "product_id", ""),
+            )
+        if hid_combo:
+            return self._finalize(device.fingerprint,
+                                  self._WEIGHTS["BADUSB_HID_COMBO"], [
+                "Device exposes linked HID (keyboard) and USB storage "
+                "interfaces — potential BadUSB keystroke injection device"
+            ], [
+                "Immediately remove the device from the endpoint",
+                "Scan the endpoint for a keystroke-injection payload",
+                "Review recently executed commands and open terminals",
+                "File a security incident report",
             ])
 
         # ── 2. Unknown device — not in allowlist ─────────────────────
@@ -203,6 +225,8 @@ class ThreatScorer:
 
     @staticmethod
     def _finalize(fp: str, score: int, factors: list, recs: list) -> ThreatScore:
+        # Keep this public helper safe for every caller, not only score_device.
+        score = max(0, min(100, score))
         level = (
             "CRITICAL" if score >= 80 else
             "HIGH"     if score >= 60 else
